@@ -1,0 +1,7 @@
+# modèles IA
+*.pt
+
+# python
+__pycache__/
+*.pyc
+.env

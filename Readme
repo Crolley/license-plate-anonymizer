@@ -1,0 +1,38 @@
+# Anonymisation de plaques d’immatriculation
+
+Script Python permettant d’anonymiser automatiquement les plaques d’immatriculation
+sur des photos de véhicules.
+
+Le script détecte les plaques, applique un flou,
+et conserve l’arborescence des dossiers d’origine.
+
+## Fonctionnalités
+
+- Détection automatique des plaques
+- Anonymisation conforme RGPD
+- Traitement en lot
+- Conservation de la structure des dossiers
+
+## Prérequis
+
+- Python 3.9 ou plus récent
+- Un modèle de détection de plaques au format YOLO
+
+Le modèle utilisé provient du dépôt suivant :  
+https://github.com/Muhammad-Zeerak-Khan/Automatic-License-Plate-Recognition-using-YOLOv8
+
+Copier le fichier `license_plate_detector.pt` et le placer
+dans le dossier racine du projet.
+
+## Installation
+
+Installer les dépendances :
+
+```bash
+pip install -r requirements.txt
+
+## Utilisation
+
+ - Placer les images à traiter dans le dossier photos/, les sous-dossiers sont pris en charge)
+ - Lancer le script python blur_plates.py
+ - Les images seront générées dans le dossier /output

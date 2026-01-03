@@ -17,28 +17,36 @@ class LicensePlateProcessor:
             self.model = YOLO(self.model_path)
         return self.model
 
-    def blur_with_rounded_corners(self, img, x1, y1, x2, y2, radius=25):
-        roi = img[y1:y2, x1:x2]
-        if roi.size == 0:
-            return
+    def blur_rotated_plate(self, img, box_points):
+        """
+        Floute une plaque d'immatriculation en suivant sa rotation.
+        box_points: 4 points du polygone de la plaque (numpy array de forme (4, 2))
+        """
+        # Créer un masque pour la zone à flouter
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)
 
-        blurred = cv2.GaussianBlur(roi, (99, 99), 30)
+        # Réduire très légèrement la zone pour ne pas déborder
+        center = np.mean(box_points, axis=0)
+        reduced_points = []
+        for point in box_points:
+            direction = point - center
+            reduced_point = center + direction * 0.95  # Réduction de seulement 5%
+            reduced_points.append(reduced_point)
 
-        h, w = roi.shape[:2]
-        radius = min(radius, w // 2, h // 2)
+        reduced_points = np.array(reduced_points, dtype=np.int32)
 
-        mask = np.zeros((h, w), dtype=np.uint8)
+        # Remplir le polygone dans le masque
+        cv2.fillPoly(mask, [reduced_points], 255)
 
-        cv2.rectangle(mask, (radius, 0), (w - radius, h), 255, -1)
-        cv2.rectangle(mask, (0, radius), (w, h - radius), 255, -1)
+        # Appliquer un léger lissage au masque pour des bords plus doux
+        mask = cv2.GaussianBlur(mask, (15, 15), 0)
 
-        cv2.circle(mask, (radius, radius), radius, 255, -1)
-        cv2.circle(mask, (w - radius, radius), radius, 255, -1)
-        cv2.circle(mask, (radius, h - radius), radius, 255, -1)
-        cv2.circle(mask, (w - radius, h - radius), radius, 255, -1)
+        # Flouter toute l'image
+        blurred_img = cv2.GaussianBlur(img, (99, 99), 30)
 
-        mask = cv2.merge([mask, mask, mask])
-        img[y1:y2, x1:x2] = np.where(mask == 255, blurred, roi)
+        # Mélanger l'image originale et l'image floutée selon le masque
+        mask_3ch = cv2.merge([mask, mask, mask]) / 255.0
+        img[:] = (blurred_img * mask_3ch + img * (1 - mask_3ch)).astype(np.uint8)
 
     def process_image(self, input_path, output_path, confidence=0.3):
         img = cv2.imread(input_path)
@@ -51,13 +59,38 @@ class LicensePlateProcessor:
         results = self.model(img, conf=confidence)
 
         for r in results:
-            for box in r.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                x1 = max(0, x1)
-                y1 = max(0, y1)
-                x2 = min(img.shape[1], x2)
-                y2 = min(img.shape[0], y2)
-                self.blur_with_rounded_corners(img, x1, y1, x2, y2)
+            # Vérifier si on a des OBB (Oriented Bounding Boxes) pour la rotation
+            if hasattr(r, 'obb') and r.obb is not None and len(r.obb) > 0:
+                # Mode avec rotation (si le modèle supporte OBB)
+                for obb in r.obb:
+                    # Récupérer les 4 points du polygone roté
+                    points = obb.xyxyxyxy[0].cpu().numpy()
+                    self.blur_rotated_plate(img, points)
+            else:
+                # Mode classique avec rectangles alignés
+                for box in r.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                    # Réduire la zone de floutage pour qu'elle soit plus précise
+                    width = x2 - x1
+                    height = y2 - y1
+                    margin_x = int(width * 0.02)  # Réduction de 2% en largeur (presque rien)
+                    margin_y = int(height * 0.15)  # Réduction de 15% en hauteur
+
+                    x1 = max(0, x1 + margin_x)
+                    y1 = max(0, y1 + margin_y)
+                    x2 = min(img.shape[1], x2 - margin_x)
+                    y2 = min(img.shape[0], y2 - margin_y)
+
+                    # Créer 4 points pour un rectangle non-roté
+                    box_points = np.array([
+                        [x1, y1],
+                        [x2, y1],
+                        [x2, y2],
+                        [x1, y2]
+                    ], dtype=np.float32)
+
+                    self.blur_rotated_plate(img, box_points)
 
         cv2.imwrite(output_path, img)
         return True

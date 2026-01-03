@@ -1,10 +1,12 @@
-# Anonymisation de plaques d’immatriculation
+# Anonymisation de plaques d'immatriculation
 
-Script Python permettant d’anonymiser automatiquement les plaques d’immatriculation
+Script Python permettant d'anonymiser automatiquement les plaques d'immatriculation
 sur des photos de véhicules.
 
 Le script détecte les plaques, applique un flou,
-et conserve l’arborescence des dossiers d’origine.
+et conserve l'arborescence des dossiers d'origine.
+
+Disponible en 2 versions : ligne de commande ou interface graphique.
 
 ## Fonctionnalités
 
@@ -12,6 +14,8 @@ et conserve l’arborescence des dossiers d’origine.
 - Anonymisation conforme RGPD
 - Traitement en lot
 - Conservation de la structure des dossiers
+- Interface graphique avec barre de progression
+- Export automatique en ZIP
 
 ## Prérequis
 
@@ -32,6 +36,15 @@ Installer les dépendances :
 
 ## Utilisation
 
- - Placer les images à traiter dans le dossier photos/, les sous-dossiers sont pris en charge)
- - Lancer le script python blur_plates.py
+### Version interface graphique (recommandée)
+
+ - Lancer `python src/main.py`
+ - Sélectionner des images ou un dossier
+ - Cliquer sur "Lancer le floutage"
+ - Choisir où sauvegarder le ZIP avec les images floutées
+
+### Version ligne de commande
+
+ - Placer les images à traiter dans le dossier photos/ (les sous-dossiers sont pris en charge)
+ - Lancer le script `python blur_plates.py`
  - Les images seront générées dans le dossier /output
